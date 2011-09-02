@@ -19,6 +19,7 @@ while ($smi =~ m! <gpu \s* ([^>]*?) \s* > \s* (.*?) \s* </gpu> !imsxg) {
 	
 	if ($attr =~ m! id=" \s* (\S+) \s* " !ix) {
 		$gpu->{id} = $1;
+		$gpu->{fieldName} = clean_fieldname $gpu->{id};
 	}
 	
 	if ($xml =~ m! <gpu_temp> \s* (\d+) \s* C \s* </gpu_temp> !ix) {
@@ -45,15 +46,15 @@ if (exists $ARGV[0] && $ARGV[0] eq 'autoconf') {
 
 if (exists $ARGV[0] && $ARGV[0] eq 'config') {
 	print 'graph_title nVidia Temperature', "\n";
-	print 'graph_vtitle Celcius', "\n";
+	print 'graph_vlabel Celcius', "\n";
 	print 'graph_args --base 1000 -l 0', "\n";
 	print 'graph_category sensors', "\n";
 	for my $gpu (@gpus) {
-		print 'nvidia_gpu_', $gpu->{id}, '.label ', $gpu->{name} || 'Unknown GPU', "\n";
+		print 'nvidia_gpu_', $gpu->{fieldName}, '.label ', $gpu->{name} || 'Unknown GPU', "\n";
 	}
 	exit;
 }
 
 for my $gpu (@gpus) {
-	print 'nvidia_gpu_', $gpu->{id}, '.value ', $gpu->{tempC}, "\n";
+	print 'nvidia_gpu_', $gpu->{fieldName}, '.value ', $gpu->{tempC}, "\n";
 }
