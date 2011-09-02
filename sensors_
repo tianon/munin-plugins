@@ -274,6 +274,7 @@ if ( defined $ARGV[0] and $ARGV[0] eq 'config' ) {
     print "$func$sensor.graph no\n" if exists $ENV{"ignore_$func$sensor"};
     $sensor++;
   }
+  print "graph no\n" if $sensor == 1; # if $sensor never changed, we didn't have any labels, so hide the whole graph
   exit 0;
 }
 
