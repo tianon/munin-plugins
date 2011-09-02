@@ -67,10 +67,14 @@ do_config () {
 	echo "graph_info This graph shows the temperature in different ACPI Thermal zones.  If there is only one it will usually be the case temperature."
 	
 	if test "$ATZ" != "$search"; then
+		echo "graph yes"
+		
 		echo "$ATZ" |
 		awk -F'[ /]' '{
 			print $5".label "$5;
 		}'
+	else
+		echo "graph no"
 	fi
 }
 
