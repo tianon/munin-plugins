@@ -9,7 +9,7 @@ use Munin::Plugin;
 
 # TODO use Munin::Plugin::me to support more than just "temp"
 
-my $smi = qx(nvidia-smi -q -x);
+my $smi = qx(nvidia-smi -q -x 2>/dev/null);
 my @gpus;
 while ($smi =~ m! <gpu \s* ([^>]*?) \s* > \s* (.*?) \s* </gpu> !imsxg) {
 	my $attr = $1;
