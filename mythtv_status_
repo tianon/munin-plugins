@@ -66,10 +66,6 @@ use LWP::Simple;
 #use XML::Parser;
 use DBI;
 
-# Parameters for Backend xml feed
-my $backendHostname = "192.168.0.2";
-my $backendStatusPort = "6544";
-
 # SQL parameters are read from mysql.txt
 # There should be no need to change anything after this point
 my $SQLServer = "";
