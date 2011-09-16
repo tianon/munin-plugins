@@ -72,6 +72,7 @@
 #%# capabilities=autoconf
 use DBI;
 use MythTV;
+use Munin::Plugin;
 use strict;
 use warnings;
 
@@ -116,16 +117,17 @@ PrepSQLRead();
      @result=SQLQuery("SELECT `name` FROM `videosource`");
      my $First=0;
      foreach $gata (@result) {
-       print "ActiveEncoders$gata.draw ";
+       my $field = clean_fieldname "ActiveEncoders$gata";
+       print "$field.draw ";
        if ( $First == 0 ) {
           print "AREA\n";
-          print "ActiveEncoders$gata.colour FF0000\n";
+          print "$field.colour FF0000\n";
           $First=1;
        } else {
           print "STACK\n";
-          print "ActiveEncoders$gata.colour 0000FF\n";
+          print "$field.colour 0000FF\n";
        }
-       print "ActiveEncoders$gata.label Active encoders for videosource '$gata'\n";
+       print "$field.label Active encoders for videosource '$gata'\n";
      }
      print "FreeEncoders.draw STACK\n";
      print "FreeEncoders.label Inactive encoders\n";
@@ -275,7 +277,7 @@ PrepSQLRead();
    }
    foreach $Name (keys %Names) {
      if ( $Name ne "" ) {
-       print "ActiveEncoders$Name.value  $Names{$Name}\n";
+       print clean_fieldname("ActiveEncoders$Name"), ".value  $Names{$Name}\n";
      }
    }
    print "FreeEncoders.value $FreeRecorders\n";
@@ -291,7 +293,7 @@ PrepSQLRead();
    @result=SQLQuery("SELECT (UNIX_TIMESTAMP( MAX( starttime ) ) - UNIX_TIMESTAMP( NOW( ) ) ) /86400 FROM program GROUP BY `listingsource` ");
    $VideoInput = 1;
    foreach $gata (@result) {
-      print "EPGDays$VideoInput.value $gata\n";
+      print clean_fieldname("EPGDays$VideoInput"), ".value $gata\n";
       $VideoInput++;
    }  
 
@@ -299,7 +301,7 @@ PrepSQLRead();
    $VideoInput = 1;
    @result=SQLQuery("SELECT count(*)/1000 FROM `program` GROUP BY `listingsource` ");
    foreach $gata (@result) {
-      print "EPGPrograms$VideoInput.value $gata\n";
+      print clean_fieldname("EPGPrograms$VideoInput"), ".value $gata\n";
       $VideoInput++;
    }
  }
