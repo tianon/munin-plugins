@@ -1,0 +1,148 @@
+#!/usr/bin/perl -w
+use strict;
+use warnings;
+use 5.010;
+
+use Munin::Plugin;
+
+my $upowerOut = qx(upower -d 2>/dev/null);
+my %upower;
+while ($upowerOut =~ m{
+		^Device: \s+ (/.*)$ \n
+		( (?: ^[ ]+\S.*$ \n )+ )
+		^$ \n
+	}mxg) {
+	my ($device, $dataOut) = ($1, $2);
+	
+	my %data;
+	while ($dataOut =~ m{
+			^[ ][ ] (\S[^:\n]*): \s+ (\S.*)$ \n
+		}mxg) {
+		$data{$1} = $2;
+	}
+	while ($dataOut =~ m{
+			^[ ][ ] (\S[^:\n]*)$ \n
+			( (?: ^[ ][ ][ ][ ]\S.*$ \n)+ )
+		}mxg) {
+		my ($key, $subdataOut) = ($1, $2);
+		
+		my %subdata;
+		while ($subdataOut =~ m{
+				^\s+ (\S[^:\n]*): \s+ (\S.*)$ \n
+			}mxg) {
+			$subdata{$1} = $2;
+		}
+		
+		$data{$key} = \%subdata;
+	}
+	
+	$upower{$device} = \%data;
+}
+
+my @batteries = grep { exists $upower{$_}{battery} } keys %upower;
+
+sub batteryName {
+	my $bat = shift;
+	return $bat unless $upower{$bat} && $upower{$bat}{battery};
+	
+	my $data = $upower{$bat};
+	my @nameData;
+	push @nameData, $data->{vendor} if $data->{vendor};
+	push @nameData, $data->{model} if $data->{model};
+	push @nameData, $data->{serial} if $data->{serial};
+	if (@nameData) {
+		return join ' ', @nameData;
+	}
+	
+	return $bat;
+}
+
+my $me = $Munin::Plugin::me;
+my $graph = $me;
+$graph =~ s/^upower_//g;
+
+if ($ARGV[0] && $ARGV[0] eq 'config') {
+	unless (keys %upower) {
+		say 'graph no';
+		exit;
+	}
+	
+	given ($graph) {
+		when qw(energy) {
+			unless (@batteries) {
+				say 'graph no';
+				exit;
+			}
+			
+			say 'graph_title Battery Energy';
+			say 'graph_vlabel Wh';
+			say 'graph_args --base 1000 -l 0';
+			say 'graph_category other';
+			
+			for my $bat (@batteries) {
+				my $batName = batteryName $bat;
+				for my $key (grep m/^energy/, keys %{ $upower{$bat}{battery} }) {
+					my $val = $upower{$bat}{battery}{$key};
+					next unless $val =~ m/^([\d.]+) Wh$/;
+					say clean_fieldname("upower_${key}_${bat}"), '.label ', $batName, ' - ', $key;
+				}
+			}
+		}
+		when qw(voltage) {
+			unless (@batteries) {
+				say 'graph no';
+				exit;
+			}
+			
+			say 'graph_title Battery Voltage';
+			say 'graph_vlabel V';
+			say 'graph_args --base 1000 -l 0';
+			say 'graph_category other';
+			
+			for my $bat (@batteries) {
+				my $batName = batteryName $bat;
+				for my $key (grep m/^voltage/, keys %{ $upower{$bat}{battery} }) {
+					my $val = $upower{$bat}{battery}{$key};
+					next unless $val =~ m/^([\d.]+) V$/;
+					say clean_fieldname("upower_${key}_${bat}"), '.label ', $batName, ' - ', $key;
+				}
+			}
+		}
+		default {
+			say 'graph no';
+			say {*STDERR} 'unknown graph type: ', $graph;
+			exit 1;
+		}
+	}
+	
+	exit;
+}
+
+unless (keys %upower) {
+	exit;
+}
+
+given ($graph) {
+	when qw(energy) {
+		for my $bat (@batteries) {
+			my $batName = batteryName $bat;
+			for my $key (grep m/^energy/, keys %{ $upower{$bat}{battery} }) {
+				my $val = $upower{$bat}{battery}{$key};
+				next unless $val =~ m/^([\d.]+) Wh$/;
+				say clean_fieldname("upower_${key}_${bat}"), '.value ', $1;
+			}
+		}
+	}
+	when qw(voltage) {
+		for my $bat (@batteries) {
+			my $batName = batteryName $bat;
+			for my $key (grep m/^voltage/, keys %{ $upower{$bat}{battery} }) {
+				my $val = $upower{$bat}{battery}{$key};
+				next unless $val =~ m/^([\d.]+) V$/;
+				say clean_fieldname("upower_${key}_${bat}"), '.value ', $1;
+			}
+		}
+	}
+}
+
+# TODO graph values
