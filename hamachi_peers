@@ -1,0 +1,71 @@
+#!/bin/sh
+# -*- sh -*-
+
+: <<=cut 
+
+=head1 NAME
+
+hamachi_peers - monitor the number of hamachi peers available
+
+=head1 USAGE
+
+Link this plugin to /etc/munin/plugins/ and restart the munin-node.
+
+=head1 MAGIC MARKERS
+
+ #%# family=auto
+ #%# capabilities=autoconf
+
+=head1 AUTHOR
+
+Tianon Gravi
+=cut
+
+do_ () { # Fetch
+	local IFS=$'\n'
+	peers=( "$(hamachi list 2>&1 | grep -E '^     [*] ' | sed -r 's/[\t ]+/ /g; s/^ ([*] )?//')" )
+	direct=0
+	indirect=0
+	for peer in "${peers[@]}"; do
+		if [ "$(echo "$peer" | cut -d' ' -f5)" = 'direct' ]; then
+			direct="$(( $direct + 1 ))"
+		else
+			indirect="$(( $indirect + 1 ))"
+		fi
+	done
+	echo 'hamachi_peers_direct.value' "$direct"
+	echo 'hamachi_peers_indirect.value' "$indirect"
+	exit 0
+}
+
+do_config () {
+	echo "graph_title Hamachi peers"
+	echo "graph_vlabel "
+	echo "graph_category network"
+	echo "graph_info This graph shows the number of connected Hamachi peers."
+	
+	if command -v hamachi &> /dev/null; then
+		echo "hamachi_peers_direct.label Direct Peers"
+		echo "hamachi_peers_indirect.label Indirect Peers"
+	else
+		echo "graph no"
+	fi
+}
+
+do_autoconf () {
+	if ! command -v hamachi &> /dev/null; then
+		echo "no (hamachi not installed)"
+		exit 0
+	fi
+	
+	echo yes
+	exit 0
+}
+
+case $1 in
+	config|autoconf|'')
+		eval do_$1
+		;;
+esac
+
+exit $?
