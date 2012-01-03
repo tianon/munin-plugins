@@ -23,9 +23,9 @@ Tianon Gravi
 
 do_ () { # Fetch
 	local IFS=$'\n'
-	peers=( "$(hamachi list 2>&1 | grep -E '^     [*] ' | sed -r 's/[\t ]+/ /g; s/^ ([*] )?//')" )
-	direct=0
-	indirect=0
+	local peers=( $(hamachi list 2>&1 | grep -E '^     [*] ' | sed -r 's/[\t ]+/ /g; s/^ ([*] )?//') )
+	local direct=0
+	local indirect=0
 	for peer in "${peers[@]}"; do
 		if [ "$(echo "$peer" | cut -d' ' -f5)" = 'direct' ]; then
 			direct="$(( $direct + 1 ))"
