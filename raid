@@ -10,8 +10,10 @@
 #%# family=contrib
 #%# capabilities=autoconf
 
+my $haveRaid = -r "/proc/mdstat" and `grep md /proc/mdstat`;
+
 if ($ARGV[0] and $ARGV[0] eq "autoconf") {
-    if (-r "/proc/mdstat" and `grep md /proc/mdstat`) {
+    if ($haveRaid) {
 	print "yes\n";
 	exit 0;
     } else {
@@ -27,6 +29,7 @@ if ( $ARGV[0] and $ARGV[0] eq "config" ) {
     print "graph_args --base 1000 -l 0\n";
     print "graph_vlabel % healthy/rebuilt\n";
     print "graph_scale  no\n";
+    print "graph no\n" unless $haveRaid; # if we have no raid, allow the plugin to be enabled, but hide the graph
 }
 
 {
