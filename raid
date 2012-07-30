@@ -52,7 +52,7 @@ if ( $ARGV[0] and $ARGV[0] eq "config" ) {
 	    # 100: means less than 100
 	    # Because of an unfound bug, sometimes reported as 99.XX even when OS reports 100.
 	    print "$dev.critical 98:\n";	
-	    print $dev, "_rebuild.label $dev rebuilt\n";
+	    print $dev, "_rebuild.label $dev rebuild\n";
 	    print $dev, "_rebuild.info $type\n";
 	    # Because of an unfound bug, sometimes reported as 99.XX even when OS reports 100.
 	    print $dev, "_rebuild.critical 98:\n";	
