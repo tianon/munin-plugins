@@ -7,6 +7,8 @@
 # Results are % of healthy drives in a raid device
 # and % rebuilt of devices that are resyncing. 
 #
+# Modified by tianon @ Jul 30, 2012 to add "graph no" for hosts that don't have RAID
+#
 #%# family=contrib
 #%# capabilities=autoconf
 
