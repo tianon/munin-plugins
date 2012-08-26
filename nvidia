@@ -1,0 +1,121 @@
+#!/usr/bin/perl
+use 5.010_000;
+use strict;
+use warnings;
+use feature ':5.10';
+
+#%# family=auto
+#%# capabilities=autoconf
+
+use Munin::Plugin;
+
+use constant FIELDNAME_PREFIX => $Munin::Plugin::me . '_gpu_';
+
+my %graphData = (
+	temp => {
+		title => 'Temperature',
+		label => 'Celcius',
+	},
+	mem => {
+		title => 'Memory',
+		label => 'MB',
+	},
+	fan => {
+		title => 'Fan',
+		label => 'Percent',
+	},
+);
+my @graphs = qw( temp mem fan );
+
+my $smi = qx(nvidia-smi -q -x 2>/dev/null);
+my @gpus;
+while ($smi =~ m! <gpu \s* ([^>]*?) \s* > \s* (.*?) \s* </gpu> !isxg) {
+	my $attr = $1;
+	my $xml = $2;
+	
+	my $gpu = {};
+	
+	if ($attr =~ m! id=" \s* (\S+) \s* " !ix) {
+		$gpu->{id} = $1;
+		$gpu->{fieldName} = clean_fieldname FIELDNAME_PREFIX . $gpu->{id};
+		$gpu->{name} //= $gpu->{id};
+	}
+	
+	if ($xml =~ m! <gpu_temp> \s* (\d+) \s* C \s* </gpu_temp> !ix) {
+		$gpu->{temp} = {} unless $gpu->{temp};
+		
+		$gpu->{temp}{celsius} = $1;
+	}
+	
+	if ($xml =~ m! <memory_usage> \s* (.+?) \s* </memory_usage> !isx) {
+		my $memXml = $1;
+		
+		$gpu->{mem} = {} unless $gpu->{mem};
+		
+		while ($memXml =~ m! <(total|used|free)> \s* (\d+) \s* MB \s* </\1> !ixg) {
+			$gpu->{mem}{$1} = $2;
+		}
+	}
+	
+	if ($xml =~ m! <fan_speed> \s* (\d+) \s* % \s* </fan_speed> !ix) {
+		$gpu->{fan} = {} unless $gpu->{fan};
+		
+		$gpu->{fan}{speed} = $1;
+	}
+	
+	if ($xml =~ m! <product_name> \s* ([^<\s][^<]*?) \s* </product_name> !ix) {
+		$gpu->{name} = $1;
+	}
+	
+	my $haveData = grep { $_ ~~ @graphs } keys %$gpu;
+	push @gpus, $gpu if defined $gpu->{id} and $haveData;
+}
+
+if (exists $ARGV[0] && $ARGV[0] eq 'autoconf') {
+	if (@gpus) {
+		print 'yes', "\n";
+		exit;
+	}
+	else {
+		print 'no', "\n";
+		exit 1;
+	}
+}
+
+if (exists $ARGV[0] && $ARGV[0] eq 'config') {
+	for my $type (@graphs) {
+		my @typeGpus = grep { $_->{$type} } @gpus;
+		print 'multigraph ' . $Munin::Plugin::me . '_' . $type, "\n";
+		print 'graph_title nVidia ', $graphData{$type}{title}, "\n";
+		print 'graph_vlabel ', $graphData{$type}{label}, "\n";
+		print 'graph_args --base 1000 -l 0', "\n";
+		print 'graph_category sensors', "\n";
+		print 'graph no', "\n" unless @typeGpus;
+		for my $gpu (@typeGpus) {
+			if ($type eq 'temp' || $type eq 'fan') {
+				print $gpu->{fieldName}, '_', $type, '.label ', $gpu->{name} || 'Unknown GPU', "\n";
+			}
+			elsif ($type eq 'mem') {
+				# TODO total, used, free (but only where available)
+			}
+		}
+	}
+	
+	exit unless 1 == int($ENV{MUNIN_CAP_DIRTYCONFIG} // 0);
+}
+
+for my $type (@graphs) {
+	my @typeGpus = grep { $_->{$type} } @gpus;
+	print 'multigraph ' . $Munin::Plugin::me . '_' . $type, "\n";
+	for my $gpu (@typeGpus) {
+		if ($type eq 'temp') {
+			print $gpu->{fieldName}, '_', $type, '.value ', $gpu->{$type}{celsius}, "\n";
+		}
+		elsif ($type eq 'fan') {
+			print $gpu->{fieldName}, '_', $type, '.value ', $gpu->{$type}{speed}, "\n";
+		}
+		elsif ($type eq 'mem') {
+			# TODO total, used, free
+		}
+	}
+}
