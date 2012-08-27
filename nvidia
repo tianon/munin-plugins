@@ -27,7 +27,8 @@ my %graphData = (
 );
 my @graphs = qw( temp mem fan );
 
-my $smi = qx(nvidia-smi -q -x 2>/dev/null);
+my $smiPath = $ENV{smiPath} || 'nvidia-smi';
+my $smi = qx($smiPath -q -x);
 my @gpus;
 while ($smi =~ m! <gpu \s* ([^>]*?) \s* > \s* (.*?) \s* </gpu> !isxg) {
 	my $attr = $1;
@@ -85,6 +86,7 @@ if (exists $ARGV[0] && $ARGV[0] eq 'autoconf') {
 if (exists $ARGV[0] && $ARGV[0] eq 'config') {
 	for my $type (@graphs) {
 		my @typeGpus = grep { $_->{$type} } @gpus;
+		print "\n";
 		print 'multigraph ' . $Munin::Plugin::me . '_' . $type, "\n";
 		print 'graph_title nVidia ', $graphData{$type}{title}, "\n";
 		print 'graph_vlabel ', $graphData{$type}{label}, "\n";
@@ -93,10 +95,15 @@ if (exists $ARGV[0] && $ARGV[0] eq 'config') {
 		print 'graph no', "\n" unless @typeGpus;
 		for my $gpu (@typeGpus) {
 			if ($type eq 'temp' || $type eq 'fan') {
-				print $gpu->{fieldName}, '_', $type, '.label ', $gpu->{name} || 'Unknown GPU', "\n";
+				print $gpu->{fieldName}, '_', $type, '.label ', $gpu->{name}, "\n";
 			}
 			elsif ($type eq 'mem') {
-				# TODO total, used, free (but only where available)
+				print $gpu->{fieldName}, '_', $type, '_used.label Used - ', $gpu->{name}, "\n";
+				print $gpu->{fieldName}, '_', $type, '_used.draw AREA', "\n";
+				print $gpu->{fieldName}, '_', $type, '_free.label Free - ', $gpu->{name}, "\n";
+				print $gpu->{fieldName}, '_', $type, '_free.draw STACK', "\n";
+				print $gpu->{fieldName}, '_', $type, '_total.label Total - ', $gpu->{name}, "\n";
+				print $gpu->{fieldName}, '_', $type, '_total.draw LINE2', "\n";
 			}
 		}
 	}
@@ -106,6 +113,7 @@ if (exists $ARGV[0] && $ARGV[0] eq 'config') {
 
 for my $type (@graphs) {
 	my @typeGpus = grep { $_->{$type} } @gpus;
+	print "\n";
 	print 'multigraph ' . $Munin::Plugin::me . '_' . $type, "\n";
 	for my $gpu (@typeGpus) {
 		if ($type eq 'temp') {
@@ -115,7 +123,9 @@ for my $type (@graphs) {
 			print $gpu->{fieldName}, '_', $type, '.value ', $gpu->{$type}{speed}, "\n";
 		}
 		elsif ($type eq 'mem') {
-			# TODO total, used, free
+			print $gpu->{fieldName}, '_', $type, '_used.value ', $gpu->{$type}{used}, "\n";
+			print $gpu->{fieldName}, '_', $type, '_free.value ', $gpu->{$type}{free}, "\n";
+			print $gpu->{fieldName}, '_', $type, '_total.value ', $gpu->{$type}{total}, "\n";
 		}
 	}
 }
