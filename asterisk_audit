@@ -43,12 +43,14 @@ sub convertStamp {
 
 sub prettyDate {
 	my ($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst) = gmtime shift;
+	my $includeTime = shift;
+	$includeTime = 1 unless defined $includeTime;
 	
-	return sprintf '%04d-%02d-%02d %02d:%02d:%02d GMT', $year + 1900, $mon + 1, $mday, $hour, $min, $sec;
+	return sprintf('%04d-%02d-%02d', $year + 1900, $mon + 1, $mday) . ($includeTime ? sprintf(' %02d:%02d:%02d GMT', $hour, $min, $sec) : '');
 }
 
 if (exists $ARGV[0] && $ARGV[0] eq 'config') {
-	print 'graph_title Asterisk Audit (', prettyDate($billStart), ' - ', prettyDate($billEnd), ')', "\n";
+	print 'graph_title Asterisk Audit (', prettyDate($billStart, 0), ' - ', prettyDate($billEnd, 0), ')', "\n";
 	print 'graph_category asterisk', "\n";
 	print 'graph_args --base 1000 -l 0', "\n";
 	print 'graph_vlabel Call Duration (seconds)', "\n";
