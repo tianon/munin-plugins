@@ -6,8 +6,8 @@ use Time::Local;
 use Text::CSV;
 
 my $cdrCsv = $ENV{CDRCSV} || '/var/log/asterisk/cdr-csv/Master.csv';
-my $cdrCsvIsGmt = $ENV{CDRCSV_ISGMT} // 1;
-my $invoiceDay = $ENV{INVOICE_DAY} // 25;
+my $cdrCsvIsGmt = defined $ENV{CDRCSV_ISGMT} ? $ENV{CDRCSV_ISGMT} : 1;
+my $invoiceDay = $ENV{INVOICE_DAY} || 25;
 
 my $periodOffset = 0;
 my $incomingRegex = 'VI-Incoming';
@@ -58,7 +58,7 @@ if (exists $ARGV[0] && $ARGV[0] eq 'config') {
 	print 'out.draw STACK', "\n";
 	print 'total.label Total', "\n";
 	print 'total.draw LINE2', "\n";
-	exit unless 1 == int($ENV{MUNIN_CAP_DIRTYCONFIG} // 0);
+	exit unless 1 == int(defined $ENV{MUNIN_CAP_DIRTYCONFIG} ? $ENV{MUNIN_CAP_DIRTYCONFIG} : 0);
 }
 
 my $csv = Text::CSV->new({ binary => 1 });
