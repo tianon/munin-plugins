@@ -1,8 +1,6 @@
 #!/usr/bin/perl
-use 5.010_000;
 use warnings;
 use strict;
-use feature ':5.10';
 
 use Time::Local;
 use Text::CSV;
@@ -50,16 +48,16 @@ sub prettyDate {
 }
 
 if (exists $ARGV[0] && $ARGV[0] eq 'config') {
-	say 'graph_title Asterisk Audit (', prettyDate($billStart), ' - ', prettyDate($billEnd), ')';
-	say 'graph_category asterisk';
-	say 'graph_args --base 1000 -l 0';
-	say 'graph_vlabel Call Duration (seconds)';
-	say 'in.label Incoming';
-	say 'in.draw AREA';
-	say 'out.label Outgoing';
-	say 'out.draw STACK';
-	say 'total.label Total';
-	say 'total.draw LINE2';
+	print 'graph_title Asterisk Audit (', prettyDate($billStart), ' - ', prettyDate($billEnd), ')', "\n";
+	print 'graph_category asterisk', "\n";
+	print 'graph_args --base 1000 -l 0', "\n";
+	print 'graph_vlabel Call Duration (seconds)', "\n";
+	print 'in.label Incoming', "\n";
+	print 'in.draw AREA', "\n";
+	print 'out.label Outgoing', "\n";
+	print 'out.draw STACK', "\n";
+	print 'total.label Total', "\n";
+	print 'total.draw LINE2', "\n";
 	exit unless 1 == int($ENV{MUNIN_CAP_DIRTYCONFIG} // 0);
 }
 
