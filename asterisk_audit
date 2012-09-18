@@ -1,0 +1,115 @@
+#!/usr/bin/perl
+use 5.010_000;
+use warnings;
+use strict;
+use feature ':5.10';
+
+use Time::Local;
+use Text::CSV;
+
+my $cdrCsv = $ENV{CDRCSV} || '/var/log/asterisk/cdr-csv/Master.csv';
+my $cdrCsvIsGmt = $ENV{CDRCSV_ISGMT} // 1;
+my $invoiceDay = $ENV{INVOICE_DAY} // 25;
+
+my $periodOffset = 0;
+my $incomingRegex = 'VI-Incoming';
+my $outgoingRegex = 'IV-Outgoing';
+
+my ($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst) = gmtime;
+
+if ($mday < $invoiceDay) {
+	--$mon;
+}
+$mon += $periodOffset;
+$mday = $invoiceDay;
+$sec = $min = $hour = 0;
+
+my $billStart = timegm($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst);
+my $billEnd = timegm($sec, $min, $hour, $mday, $mon + 1, $year, $wday, $yday, $isdst);
+
+sub convertStamp {
+	my $stamp = shift;
+	
+	if ($stamp =~ m! ^ (\d{4})-(\d{2})-(\d{2}) (?: \s+ (\d{2}):(\d{2}):(\d{2}) )? $ !gx) {
+		my @args = ($6, $5, $4, $3, $2 - 1, $1 - 1900, undef, undef, undef);
+		if ($cdrCsvIsGmt) {
+			return timegm(@args);
+		}
+		else {
+			return timelocal(@args);
+		}
+	}
+	
+	return undef;
+}
+
+sub prettyDate {
+	my ($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst) = gmtime shift;
+	
+	return sprintf '%04d-%02d-%02d %02d:%02d:%02d GMT', $year + 1900, $mon + 1, $mday, $hour, $min, $sec;
+}
+
+if (exists $ARGV[0] && $ARGV[0] eq 'config') {
+	say 'graph_title Asterisk Audit (', prettyDate($billStart), ' - ', prettyDate($billEnd), ')';
+	say 'graph_category asterisk';
+	say 'graph_args --base 1000 -l 0';
+	say 'graph_vlabel Call Duration (seconds)';
+	say 'in.label Incoming';
+	say 'in.draw AREA';
+	say 'out.label Outgoing';
+	say 'out.draw STACK';
+	say 'total.label Total';
+	say 'total.draw LINE2';
+	exit unless 1 == int($ENV{MUNIN_CAP_DIRTYCONFIG} // 0);
+}
+
+my $csv = Text::CSV->new({ binary => 1 });
+open my $fh, '<:encoding(utf8)', $cdrCsv or die "open failed: $!";
+
+my $inDuration = 0;
+my $outDuration = 0;
+
+my @bill;
+while (my $row = $csv->getline($fh)) {
+	# see http://www.voip-info.org/wiki/view/Asterisk+cdr+csv
+	my %e;
+	(
+		$e{accountcode},
+		$e{src},
+		$e{dst},
+		$e{dcontext},
+		$e{clid},
+		$e{channel},
+		$e{dstchannel},
+		$e{lastapp},
+		$e{lastdata},
+		$e{start},
+		$e{answer},
+		$e{end},
+		$e{duration},
+		$e{billsec},
+		$e{disposition},
+		$e{amaflags},
+		$e{uniqueid},
+	) = @$row;
+	$e{start} = convertStamp $e{start} if $e{start};
+	$e{answer} = convertStamp $e{answer} if $e{answer};
+	$e{end} = convertStamp $e{end} if $e{end};
+	next if $e{end} < $billStart;
+	next if $e{end} >= $billEnd;
+	push @bill, \%e;
+	
+	if ($e{channel} =~ $incomingRegex or $e{dstchannel} =~ $incomingRegex) {
+		$inDuration += $e{duration};
+	}
+	elsif ($e{channel} =~ $outgoingRegex or $e{dstchannel} =~ $outgoingRegex) {
+		$outDuration += $e{duration};
+	}
+}
+
+$csv->eof or $csv->error_diag;
+close $fh;
+
+print 'in.value ', $inDuration, "\n";
+print 'out.value ', $outDuration, "\n";
+print 'total.value ', $inDuration + $outDuration, "\n";
