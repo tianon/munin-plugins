@@ -113,3 +113,5 @@ close $fh;
 print 'in.value ', $inDuration, "\n";
 print 'out.value ', $outDuration, "\n";
 print 'total.value ', $inDuration + $outDuration, "\n";
+print 'total.warning ' . (100 * 60);
+print 'total.critical ' . (300 * 60);
