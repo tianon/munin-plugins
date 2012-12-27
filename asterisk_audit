@@ -22,8 +22,15 @@ $mon += $periodOffset;
 $mday = $invoiceDay;
 $sec = $min = $hour = 0;
 
+my $endMon = $mon + 1;
+my $endYear = $year;
+while ($endMon > 11) {
+	$endMon -= 12;
+	++$endYear;
+}
+
 my $billStart = timegm($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst);
-my $billEnd = timegm($sec, $min, $hour, $mday, $mon + 1, $year, $wday, $yday, $isdst);
+my $billEnd = timegm($sec, $min, $hour, $mday, $endMon, $endYear, $wday, $yday, $isdst);
 
 sub convertStamp {
 	my $stamp = shift;
