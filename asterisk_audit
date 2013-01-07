@@ -2,6 +2,7 @@
 use warnings;
 use strict;
 
+use DateTime;
 use Time::Local;
 use Text::CSV;
 
@@ -15,22 +16,17 @@ my $outgoingRegex = 'IV-Outgoing';
 
 my ($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst) = gmtime;
 
-if ($mday < $invoiceDay) {
-	--$mon;
+my $billStart = DateTime->today;
+if ($billStart->day < $invoiceDay) {
+	$billStart->subtract(months => 1);
 }
-$mon += $periodOffset;
-$mday = $invoiceDay;
-$sec = $min = $hour = 0;
+$billStart->add(months => $periodOffset);
+$billStart->set_day($invoiceDay);
 
-my $endMon = $mon + 1;
-my $endYear = $year;
-while ($endMon > 11) {
-	$endMon -= 12;
-	++$endYear;
-}
+my $billEnd = $billStart->clone->add(months => 1);
 
-my $billStart = timegm($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst);
-my $billEnd = timegm($sec, $min, $hour, $mday, $endMon, $endYear, $wday, $yday, $isdst);
+$billStart = $billStart->epoch;
+$billEnd = $billEnd->epoch;
 
 sub convertStamp {
 	my $stamp = shift;
